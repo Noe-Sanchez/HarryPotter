@@ -44,7 +44,7 @@ class full_game_client():
     lineColors = {
         0 : (0,0,255),
         1 : (230, 200, 0),
-        3 : (20, 120, 230)
+        2 : (20, 120, 230)
     }
 
     def __init__(self):
@@ -86,6 +86,8 @@ class full_game_client():
         self.current_spell_index = 0
         self.current_tau = 0
         self.current_segment = 1
+
+        self.cap = cv2.VideoCapture(0)
 
     def esp_listener(self):
         while self.nodeThreadEnabled:
@@ -130,10 +132,10 @@ class full_game_client():
                 max_num_hands=2,
                 min_detection_confidence=0.7)
 
-                cap = cv2.VideoCapture(0)
-                while cap.isOpened():
-                    success, image = cap.read()
+                while self.cap.isOpened():
+                    success, image = self.cap.read()
                     height, width, _ = image.shape
+                    print(f"Current spell: {self.current_spell_index}")
                     current_spell_recipe = np.array(self.spell_list[self.current_spell_index], dtype=np.half)
                     current_spell_recipe = np.vstack([2*current_spell_recipe[0]-current_spell_recipe[1], current_spell_recipe, 2*current_spell_recipe[0]-current_spell_recipe[1]])
                     current_spell_recipe = np.array([width, height])*current_spell_recipe
@@ -198,7 +200,7 @@ class full_game_client():
                         self.clientData = ""
                     if spell_cast == True:
                         if (useServer):
-                            self.client.sendall("cast#fire".encode("utf-8"))
+                            self.client.sendall(f"cast#{spell_index_to_type[self.current_spell_index]}".encode("utf-8"))
                             self.clientData = self.client.recv(1024).decode("utf-8")
                         else:
                             print("Spell Cast")
@@ -211,7 +213,8 @@ class full_game_client():
                     cv2.waitKey(1)
                     if cv2.waitKey(25) & 0xFF == ord('c'):
                         break
-                cap.release()
+
+                self.cap.release()
                 cv2.destroyAllWindows()
 
                 print(self.clientData)
