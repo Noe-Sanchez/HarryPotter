@@ -5,7 +5,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 clients = {}
-data = {}
+casts = {}
+life = {}
+turn_end = False
 
 class TCPServer:
     def __init__(self, host, port):
@@ -21,42 +23,91 @@ class TCPServer:
         self.server.listen(1)
         while True:
             global clients
-            client, incomming_address = self.server.accept()
-            self.id_counter += 1
-            #self.clients.append(client)
-            #clients.append(client)
-            clients.update({str(self.id_counter): client})
-            data.update({str(self.id_counter): 0})
-            #print(clients)
-            print("New connection from: " + str(incomming_address))
-            client.sendall(("ID: " + str(self.id_counter)).encode('utf-8'))
-            time.sleep(0.2)
+            global casts
+            global life
+            global turn_end
+            if len(clients) < 2:
+                client, incomming_address = self.server.accept()
+                self.id_counter += 1
+                clients.update({str(self.id_counter % 2): client})
+                casts.update({str(self.id_counter % 2): ""})
+                life.update({str(self.id_counter % 2): 100})
+                print("New connection from: " + str(incomming_address))
+                client.sendall(("ID: " + str(self.id_counter)).encode('utf-8'))
+                time.sleep(0.2)
 
-    def broadcast(self):
+    def transceiver(self):
         while True:
             global clients
-            #print("Broadcasting")
-            #print(clients)
+            global casts
+            global turn_end
             for client_id, client in clients.copy().items():
                 try:
-                    client.sendall((str(data)).encode('utf-8'))
-                    data[client_id] = client.recv(1024).decode('utf-8')
+                    if turn_end:
+                        print("Turn ended hit")
+                        client.sendall("reset".encode('utf-8'))
+                        casts["0"] = ""
+                        casts["1"] = ""
+                    else:
+                        client.sendall(str(life).encode('utf-8'))
+                    incomming = client.recv(1024).decode('utf-8')
+                    print("Client:", client_id, "sent:", incomming)
+                    if "cast" in incomming:
+                        casts[client_id] = incomming.split("#")[1]
+                        #print("Client:", client_id, "casted spell:", casts[client_id])
+                    
                 except Exception as e:
                     try:
+                        print(e)
                         print("Client:", client_id, "disconnected")
                         client.close()
                         del clients[client_id]
-                        del data[client_id]
+                        del casts[client_id]
                     except:
                         pass
-            time.sleep(0.2)
+            if turn_end:
+                turn_end = False
+            time.sleep(0.01)
+
+    def game(self):
+        while True:
+            global casts
+            global life
+            global turn_end
+            print("Game started")
+            time.sleep(20)
+            print("Game started2")
+            try:
+                if casts["0"] == "fire" and casts["1"] == "water":
+                    life["0"] -= 10
+                elif casts["0"] == "water" and casts["1"] == "fire":
+                    life["1"] -= 10
+                elif casts["0"] == "fire" and casts["1"] == "earth":
+                    life["1"] -= 10
+                elif casts["0"] == "earth" and casts["1"] == "fire":
+                    life["0"] -= 10
+                elif casts["0"] == "water" and casts["1"] == "earth":
+                    life["0"] -= 10
+                elif casts["0"] == "earth" and casts["1"] == "water":
+                    life["1"] -= 10
+                print("Wizard 0 life:", life["0"])    
+                print("Wizard 1 life:", life["1"])    
+                turn_end = True
+                casts["0"] = ""
+                casts["1"] = ""
+            except Exception as e:
+                turn_end = True
+                print(e)
+                pass
+
 
 if __name__ == '__main__':
     server = TCPServer("127.0.0.1", 19000)
 
     executor = ThreadPoolExecutor(10)
     loop = asyncio.new_event_loop()
-    broadcast_thread = loop.run_in_executor(executor, server.broadcast)
+    transceiver_thread = loop.run_in_executor(executor, server.transceiver)
+    game_thread = loop.run_in_executor(executor, server.game)
     start_thread = loop.run_in_executor(executor, server.start)
 
     loop.run_forever()
