@@ -47,13 +47,13 @@ class full_game_client():
         2 : (20, 120, 230)
     }
 
-    def __init__(self):
+    def __init__(self, host, port):
         print("Initializing")
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if (useServer):
-            self.host = "192.168.137.245"
-            self.port = 19000
+            self.host = host
+            self.port = port
             self.client.connect((self.host, self.port))
             # client thread
             #self.clientThreadEnabled = True
@@ -66,6 +66,13 @@ class full_game_client():
             self.nodeServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.esp_host = '0.0.0.0'
             self.esp_port = 11311
+            try: 
+                self.nodeServer.bind((self.esp_host, self.esp_port))
+            except:
+                self.nodeServer.close()
+                time.sleep(0.5)
+                self.nodeServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.nodeServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.nodeServer.bind((self.esp_host, self.esp_port))
             self.nodeServer.listen(1)
             self.nodeThreadEnabled = True
@@ -200,10 +207,29 @@ class full_game_client():
                         self.current_segment = 1
                         self.current_tau = 0
                         self.clientData = ""
+                    elif self.clientData in ["0", "1"]:
+                        self.id = self.clientData
+                    if self.clientData == "end":
+                        self.clientData = self.client.recv(1024).decode("utf-8")
+                        print(self.clientData)
+                        while self.cap.isOpened():
+                            success, image = self.cap.read()
+                            image = cv2.flip(image, 1)
+                            if self.clientData == self.id:
+                                #print("You won!")
+                                #print on cv window you won
+                                cv2.putText(image, "You won!", (10,80), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 4, cv2.LINE_AA)
+                            else:
+                                #print("You lost!")
+                                #print on cv window you lost at the center, on red
+                                cv2.putText(image, "You lost!", (10,80), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 4, cv2.LINE_AA)
+                            cv2.imshow('Harry Potter', image)
+                            if cv2.waitKey(25) & 0xFF == ord('c'):
+                                break
                     if spell_cast == True:
                         if (useServer):
                             self.client.sendall(f"cast#{spell_index_to_type[self.current_spell_index]}".encode("utf-8"))
-                            self.clientData = self.client.recv(1024).decode("utf-8")
+                            #self.clientData = self.client.recv(1024).decode("utf-8")
                         else:
                             print("Spell Cast")
                         self.clientData = "reset"
@@ -247,4 +273,6 @@ class full_game_client():
 
         
 if __name__ == '__main__':
-    full_game_client().run()
+    host = "192.168.12.1"
+    port = 19000
+    full_game_client(host, port).run()

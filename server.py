@@ -3,18 +3,29 @@ import asyncio
 import time
 #from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
+from firebase import firebase
 
 clients = {}
 casts = {}
 life = {}
 turn_end = False
-turn_duration = 5
+turn_duration = 1
 
 class TCPServer:
+    # Firebase Realtime Database URL
+    database_url = 'https://te2003bgame-default-rtdb.firebaseio.com/'
+    # API key for authentication
+    api_key = 'AIzaSyBlBnUsgOurHicryXZnSgsym_3l98Nlj'
+    # Path to the node you want to update
+    node = 'game'  # Update this with the path to your node
+    # Where value is
+    node_value = 'result'
+
     def __init__(self, host, port):
         self.host = host
         self.port = port
         self.id_counter = 0
+        self.firebase = firebase.FirebaseApplication(self.database_url, None)
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.startGame = False
@@ -35,8 +46,9 @@ class TCPServer:
                 casts.update({str(self.id_counter % 2): ""})
                 life.update({str(self.id_counter % 2): 100})
                 print("New connection from: " + str(incomming_address))
-                client.sendall(("ID: " + str(self.id_counter)).encode('utf-8'))
-                time.sleep(0.2)
+                #client.sendall(("ID: " + str(self.id_counter)).encode('utf-8'))
+                client.sendall((str(self.id_counter - 1)).encode('utf-8'))
+                time.sleep(1.0)
             else:
                 print("Starting game...")
                 self.startGame = True
@@ -53,19 +65,38 @@ class TCPServer:
                 try:
                     if life["0"] <= 0 or life["1"] <= 0:
                         print("Game ended")
-                        client.sendall("end".encode('utf-8'))
-                        print("Sleeping...")
+                        for client_id, client in clients.copy().items():
+                            client.sendall("end".encode('utf-8'))
+                        print("Sending to firebase...")
+                        time.sleep(0.5)
+                        if life["0"] <= 0:
+                            data = "0"
+                            result = self.firebase.put(self.node, self.node_value, 1)
+                        else:
+                            result = self.firebase.put(self.node, self.node_value, 2)
+                        for client_id, client in clients.copy().items():
+                            client.sendall(data.encode('utf-8'))
+                        print(result)
+                        # replace the value at "value" for data
                         self.startGame = False
-                        time.sleep(20)
+                        prevtime = time.time()
+                        rasp_signal_duration = 10
+                        while (time.time() - prevtime) < rasp_signal_duration:
+                            #each second passed print remaining time
+                            print("Remaining time for database rewrite:", round(rasp_signal_duration - (time.time() - prevtime)))
+                            time.sleep(1)
+                            pass
                         # send 0 to database
+                        result = self.firebase.put(self.node, self.node_value, 0)
                         print("Turning rasp off...")
+                        break
                     if turn_end:
                         print("Turn ended hit")
-                        client.sendall("reset".encode('utf-8'))
                         casts["0"] = ""
                         casts["1"] = ""
                         for client_id, client in clients.copy().items():
                             client.sendall("reset".encode('utf-8'))
+                        time.sleep(0.3)
                         turn_end = False
                     else:
                         client.sendall(str(life).encode('utf-8'))
@@ -102,7 +133,7 @@ class TCPServer:
             prevtime = time.time()
             while (time.time() - prevtime) < turn_duration:
                 #each second passed print remaining time
-                print("Remaining time:", turn_duration - (time.time() - prevtime))
+                print("Remaining time:", round(turn_duration - (time.time() - prevtime)))
                 time.sleep(1)
                 pass
             
@@ -130,6 +161,8 @@ class TCPServer:
                 casts["0"] = ""
                 casts["1"] = ""
                 time.sleep(0.5)
+                if life["0"] <= 0 or life["1"] <= 0:
+                    break
             except Exception as e:
                 turn_end = True
                 print(e)
@@ -137,7 +170,7 @@ class TCPServer:
 
 
 if __name__ == '__main__':
-    server = TCPServer("192.168.137.245", 19000)
+    server = TCPServer("192.168.12.1", 19000)
 
     executor = ThreadPoolExecutor(10)
     loop = asyncio.new_event_loop()
