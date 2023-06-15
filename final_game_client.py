@@ -96,20 +96,37 @@ class full_game_client():
         while self.nodeThreadEnabled:
             client, addr = self.nodeServer.accept()
             while self.nodeThreadEnabled:
-                client.settimeout(5)
-                self.nodeData = client.recv(8)
-                if len(self.nodeData) == 0:
+                try:
+                    client.settimeout(5)
+                    self.nodeData = client.recv(8)
+                    if len(self.nodeData) == 0:
+                        break
+                    else:
+                        print(f"Received: {self.nodeData}")
+                        if (self.nodeData == b'1'):
+                            self.current_spell_index += 1
+                            self.current_tau = 0
+                            self.current_segment = 1
+                            if (self.current_spell_index >= len(self.spell_list)):
+                                self.current_spell_index = 0
+                            while (self.nodeData == b'1'):
+                                self.nodeData = client.recv(8)
+                except socket.error as e:
+                    print(e)
+                    # reconnect to socket
+                    client.close()
+                    while True:
+                        try:
+                            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                            client.connect((self.host, self.port))
+
+                            print("Reconnected to esp")
+                            break
+                        except Exception as e:
+                            time.sleep(1)
+                            print("Trying to reconnect to esp...")
                     break
-                else:
-                    print(f"Received: {self.nodeData}")
-                    if (self.nodeData == b'1'):
-                        self.current_spell_index += 1
-                        self.current_tau = 0
-                        self.current_segment = 1
-                        if (self.current_spell_index >= len(self.spell_list)):
-                            self.current_spell_index = 0
-                        while (self.nodeData == b'1'):
-                            self.nodeData = client.recv(8)
         print("Closed ESP client")
         client.close()
             
