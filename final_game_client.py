@@ -88,6 +88,8 @@ class full_game_client():
         self.current_tau = 0
         self.current_segment = 1
 
+        self.life = 100
+        self.opponent_life = 100
         self.cap = cv2.VideoCapture(0)
 
     def esp_listener(self):
@@ -195,6 +197,17 @@ class full_game_client():
                                             self.current_tau = 0
                     self.clientData = self.client.recv(1024).decode("utf-8")
                     print(self.clientData)
+                    try:
+
+                        life = eval(self.clientData)
+                        if self.id == "0":
+                            self.life = life["1"]
+                            self.opponent_life = life["0"]
+                        else:
+                            self.life = life["0"]
+                            self.opponent_life = life["1"]
+                    except:
+                        pass
                     if self.clientData == "reset":
                         print("RESETTING")
                         spell_cast = False
@@ -231,7 +244,11 @@ class full_game_client():
                         if (useServer):
                             self.client.sendall("nadota pa".encode("utf-8"))
 
-                    cv2.imshow('Harry Potter', cv2.flip(image, 1))
+                    image = cv2.flip(image, 1)
+                    # put life on cv window
+                    cv2.putText(image, "Your life: " + str(self.life), (10,25), cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 255), 2, cv2.LINE_AA)
+                    cv2.putText(image, "Opponent life: " + str(self.opponent_life), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 200), 2, cv2.LINE_AA)
+                    cv2.imshow('Harry Potter', image)
                     cv2.waitKey(1)
                     if cv2.waitKey(25) & 0xFF == ord('c'):
                         break
