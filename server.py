@@ -4,12 +4,13 @@ import time
 #from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from firebase import firebase
+import json
 
 clients = {}
 casts = {}
 life = {}
 turn_end = False
-turn_duration = 1
+turn_duration = 25
 
 class TCPServer:
     # Firebase Realtime Database URL
@@ -48,7 +49,7 @@ class TCPServer:
                 print("New connection from: " + str(incomming_address))
                 #client.sendall(("ID: " + str(self.id_counter)).encode('utf-8'))
                 client.sendall((str(self.id_counter - 1)).encode('utf-8'))
-                time.sleep(1.0)
+                time.sleep(2)
             else:
                 print("Starting game...")
                 self.startGame = True
@@ -57,6 +58,7 @@ class TCPServer:
     def transceiver(self):
         while not self.startGame:
             pass
+        time.sleep(0.5)
         while self.startGame:
             global clients
             global casts
@@ -73,6 +75,7 @@ class TCPServer:
                             data = "0"
                             result = self.firebase.put(self.node, self.node_value, 1)
                         else:
+                            data = "1"
                             result = self.firebase.put(self.node, self.node_value, 2)
                         for client_id, client in clients.copy().items():
                             client.sendall(data.encode('utf-8'))
@@ -125,6 +128,7 @@ class TCPServer:
     def game(self):
         while not self.startGame:
             pass
+        time.sleep(0.5)
         while self.startGame:
             global casts
             global life

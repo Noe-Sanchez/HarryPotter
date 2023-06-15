@@ -66,13 +66,7 @@ class full_game_client():
             self.nodeServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.esp_host = '0.0.0.0'
             self.esp_port = 11311
-            try: 
-                self.nodeServer.bind((self.esp_host, self.esp_port))
-            except:
-                self.nodeServer.close()
-                time.sleep(0.5)
-                self.nodeServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.nodeServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            time.sleep(1)
             self.nodeServer.bind((self.esp_host, self.esp_port))
             self.nodeServer.listen(1)
             self.nodeThreadEnabled = True
