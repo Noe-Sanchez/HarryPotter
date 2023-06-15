@@ -6,7 +6,7 @@ def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
-    host = '127.0.0.1'
+    host = "192.168.137.245"
     port = 19000
 
     client.connect((host, port))
