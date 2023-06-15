@@ -117,10 +117,8 @@ class full_game_client():
                     client.close()
                     while True:
                         try:
-                            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                            client.connect((self.host, self.port))
-
+                            print("Trying to reconnect to esp...")
+                            client, addr = self.nodeServer.accept()
                             print("Reconnected to esp")
                             break
                         except Exception as e:
