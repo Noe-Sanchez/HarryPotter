@@ -52,13 +52,13 @@ class full_game_client():
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if (useServer):
-            self.host = '127.0.0.1'
+            self.host = "192.168.137.245"
             self.port = 19000
             self.client.connect((self.host, self.port))
             # client thread
-            self.clientThreadEnabled = True
-            self.clientThread = threading.Thread(target=self.client_listener)
-            self.clientThread.start()
+            #self.clientThreadEnabled = True
+            #self.clientThread = threading.Thread(target=self.client_listener)
+            #self.clientThread.start()
         self.clientData = None
         self.nodeData = 0
         if (useESP):
@@ -135,7 +135,7 @@ class full_game_client():
                 while self.cap.isOpened():
                     success, image = self.cap.read()
                     height, width, _ = image.shape
-                    print(f"Current spell: {self.current_spell_index}")
+                    #print(f"Current spell: {self.current_spell_index}")
                     current_spell_recipe = np.array(self.spell_list[self.current_spell_index], dtype=np.half)
                     current_spell_recipe = np.vstack([2*current_spell_recipe[0]-current_spell_recipe[1], current_spell_recipe, 2*current_spell_recipe[0]-current_spell_recipe[1]])
                     current_spell_recipe = np.array([width, height])*current_spell_recipe
@@ -192,8 +192,10 @@ class full_game_client():
                                             self.current_segment += 1
 
                                             self.current_tau = 0
+                    self.clientData = self.client.recv(1024).decode("utf-8")
                     print(self.clientData)
                     if self.clientData == "reset":
+                        print("RESETTING")
                         spell_cast = False
                         self.current_segment = 1
                         self.current_tau = 0
@@ -232,7 +234,7 @@ class full_game_client():
                         print("Reconnected to server")
                         break
                     except Exception as e:
-                        time.sleep(5)
+                        time.sleep(1)
                         print("Trying to reconnect...")
             except Exception as e:
                 print(e)
